@@ -1,16 +1,20 @@
 # 필요한 라이브러리를 불러옵니다.
+import streamlit as st
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
+# --- Streamlit 앱 설정 ---
+st.title('공부 시간에 따른 시험 점수 회귀분석')
+st.write("간단한 선형 회귀 모델을 만들어 공부 시간에 따른 시험 점수를 예측하는 웹 앱입니다.")
+
 # 한국어 폰트 설정을 위한 코드 (Matplotlib에서 한국어 깨짐 방지)
-# 실행 환경에 따라 폰트가 없을 경우, 다른 폰트로 변경하거나 폰트 설치가 필요할 수 있습니다.
 try:
     plt.rc('font', family='Malgun Gothic')
-    # Retina 디스플레이의 경우 글씨가 흐릿하게 보이는 현상 방지
     plt.rc('figure', dpi=100)
 except:
+    st.warning("'Malgun Gothic' 폰트를 찾을 수 없습니다. 그래프의 한글이 깨질 수 있습니다.")
     pass
 
 # 1. 예제 데이터 생성
@@ -34,44 +38,47 @@ model.fit(X, y)
 # coef_는 기울기(가중치)를, intercept_는 y절편을 나타냅니다.
 slope = model.coef_[0]
 intercept = model.intercept_
-print(f"모델의 기울기 (w): {slope:.2f}")
-print(f"모델의 y절편 (b): {intercept:.2f}")
-print(f"-> 회귀식: y = {slope:.2f} * X + {intercept:.2f}")
+
+st.subheader("학습된 회귀 모델 정보")
+col1, col2, col3 = st.columns(3)
+col1.metric("기울기 (w)", f"{slope:.2f}")
+col2.metric("y절편 (b)", f"{intercept:.2f}")
+
+# 5. 모델 평가
+y_pred = model.predict(X)
+r2 = r2_score(y, y_pred)
+col3.metric("결정 계수 (R²)", f"{r2:.2f}")
+
+st.write(f"**회귀식:** `y = {slope:.2f} * X + {intercept:.2f}`")
 
 
 # 4. 모델을 사용한 예측
-# 학습에 사용된 X값 전체에 대한 예측값을 구합니다.
-y_pred = model.predict(X)
-
-# 새로운 데이터(예: 9시간 공부)에 대한 점수를 예측합니다.
-new_X = np.array([[9]])
+st.subheader("새로운 데이터로 점수 예측하기")
+new_study_time = st.slider("예측할 공부 시간을 선택하세요:", min_value=1, max_value=15, value=9)
+new_X = np.array([[new_study_time]])
 predicted_score = model.predict(new_X)
-print(f"\n9시간 공부했을 때의 예상 시험 점수: {predicted_score[0]:.2f}점")
-
-
-# 5. 모델 평가
-# 결정 계수(R-squared)를 계산하여 모델의 설명력을 평가합니다.
-# 1에 가까울수록 모델이 데이터를 잘 설명한다는 의미입니다.
-r2 = r2_score(y, y_pred)
-print(f"결정 계수 (R-squared): {r2:.2f}")
+st.success(f"**{new_study_time}시간** 공부했을 때의 예상 시험 점수는 **{predicted_score[0]:.2f}점** 입니다.")
 
 
 # 6. 결과 시각화
-plt.figure(figsize=(10, 6))
+st.subheader("회귀분석 결과 시각화")
+fig, ax = plt.subplots(figsize=(10, 6))
 
 # 실제 데이터 (파란색 점)
-plt.scatter(X, y, color='blue', label='실제 데이터')
+ax.scatter(X, y, color='blue', label='실제 데이터')
 
 # 모델이 예측한 회귀선 (빨간색 선)
-plt.plot(X, y_pred, color='red', linewidth=2, label='회귀선')
+ax.plot(X, y_pred, color='red', linewidth=2, label='회귀선')
 
-# 9시간 공부했을 때의 예측값 (녹색 점)
-plt.scatter(new_X, predicted_score, color='green', s=150, zorder=5, label='9시간 공부 시 예측 점수')
+# 새로운 예측값 (녹색 점)
+ax.scatter(new_X, predicted_score, color='green', s=150, zorder=5, label=f'{new_study_time}시간 공부 시 예측 점수')
 
 # 그래프 제목 및 라벨 설정
-plt.title('공부 시간에 따른 시험 점수 회귀분석', fontsize=16)
-plt.xlabel('공부 시간 (X)', fontsize=12)
-plt.ylabel('시험 점수 (y)', fontsize=12)
-plt.legend()
-plt.grid(True)
-plt.show()
+ax.set_title('공부 시간에 따른 시험 점수 회귀분석', fontsize=16)
+ax.set_xlabel('공부 시간 (X)', fontsize=12)
+ax.set_ylabel('시험 점수 (y)', fontsize=12)
+ax.legend()
+ax.grid(True)
+
+# Streamlit에 그래프를 표시합니다.
+st.pyplot(fig)
